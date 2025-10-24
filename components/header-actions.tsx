@@ -3,7 +3,6 @@
 import { LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { memo } from "react";
-import { GitIcon } from "@/components/icons";
 import { HeaderUserNav } from "@/components/sidebar-user-nav";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,17 +21,6 @@ function PureHeaderActions({ user }: { user?: Session["user"] }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Button asChild size="icon" type="button" variant="ghost">
-        <a
-          className="flex items-center justify-center"
-          href="https://github.com/franciscomoretti/sparka"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          <GitIcon size={20} />
-        </a>
-      </Button>
-
       {isAuthenticated && effectiveUser ? (
         <HeaderUserNav user={effectiveUser} />
       ) : (
