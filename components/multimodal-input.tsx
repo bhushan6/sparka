@@ -57,7 +57,7 @@ const IMAGE_UPLOAD_LIMITS = {
   maxDimension: 2048,
 };
 const IMAGE_UPLOAD_MAX_MB = Math.round(
-  IMAGE_UPLOAD_LIMITS.maxBytes / (1024 * 1024)
+  IMAGE_UPLOAD_LIMITS.maxBytes / (1024 * 1024),
 );
 
 function PureMultimodalInput({
@@ -112,7 +112,7 @@ function PureMultimodalInput({
   // Helper function to auto-switch to image-compatible model
   const switchToImageCompatibleModel = useCallback(() => {
     const defaultImageModelDef = getAppModelDefinition(
-      DEFAULT_CHAT_IMAGE_COMPATIBLE_MODEL
+      DEFAULT_CHAT_IMAGE_COMPATIBLE_MODEL,
     );
     toast.success(`Switched to ${defaultImageModelDef.name} (supports images)`);
     handleModelChange(DEFAULT_CHAT_IMAGE_COMPATIBLE_MODEL);
@@ -180,12 +180,12 @@ function PureMultimodalInput({
 
       if (stillOversized.length > 0) {
         toast.error(
-          `${stillOversized.length} file(s) exceed ${IMAGE_UPLOAD_MAX_MB}MB after compression`
+          `${stillOversized.length} file(s) exceed ${IMAGE_UPLOAD_MAX_MB}MB after compression`,
         );
       }
       if (unsupportedFiles.length > 0) {
         toast.error(
-          `${unsupportedFiles.length} unsupported file type(s). Only images and PDFs are allowed`
+          `${unsupportedFiles.length} unsupported file type(s). Only images and PDFs are allowed`,
         );
       }
 
@@ -203,7 +203,7 @@ function PureMultimodalInput({
 
       return [...processedImages, ...pdfFiles];
     },
-    [selectedModelId, switchToPdfCompatibleModel, switchToImageCompatibleModel]
+    [selectedModelId, switchToPdfCompatibleModel, switchToImageCompatibleModel],
   );
 
   const coreSubmitLogic = useCallback(() => {
@@ -300,7 +300,7 @@ function PureMultimodalInput({
 
   const uploadFile = useCallback(
     async (
-      file: File
+      file: File,
     ): Promise<
       { url: string; name: string; contentType: string } | undefined
     > => {
@@ -330,7 +330,7 @@ function PureMultimodalInput({
         toast.error("Failed to upload file, please try again!");
       }
     },
-    []
+    [],
   );
 
   const handleFileChange = useCallback(
@@ -348,7 +348,7 @@ function PureMultimodalInput({
         const uploadPromises = validFiles.map((file) => uploadFile(file));
         const uploadedAttachments = await Promise.all(uploadPromises);
         const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
+          (attachment) => attachment !== undefined,
         );
 
         setAttachments((currentAttachments) => [
@@ -361,7 +361,7 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, processFiles, uploadFile]
+    [setAttachments, processFiles, uploadFile],
   );
 
   const handlePaste = useCallback(
@@ -399,7 +399,7 @@ function PureMultimodalInput({
         const uploadPromises = validFiles.map((file) => uploadFile(file));
         const uploadedAttachments = await Promise.all(uploadPromises);
         const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
+          (attachment) => attachment !== undefined,
         );
 
         setAttachments((currentAttachments) => [
@@ -408,7 +408,7 @@ function PureMultimodalInput({
         ]);
 
         toast.success(
-          `${successfullyUploadedAttachments.length} file(s) pasted from clipboard`
+          `${successfullyUploadedAttachments.length} file(s) pasted from clipboard`,
         );
       } catch (error) {
         console.error("Error uploading pasted files!", error);
@@ -416,18 +416,18 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, processFiles, status, session, uploadFile]
+    [setAttachments, processFiles, status, session, uploadFile],
   );
 
   const removeAttachment = useCallback(
     (attachmentToRemove: Attachment) => {
       setAttachments((currentAttachments) =>
         currentAttachments.filter(
-          (attachment) => attachment.url !== attachmentToRemove.url
-        )
+          (attachment) => attachment.url !== attachmentToRemove.url,
+        ),
       );
     },
-    [setAttachments]
+    [setAttachments],
   );
 
   const handleImageClick = useCallback(
@@ -438,7 +438,7 @@ function PureMultimodalInput({
         imageName,
       });
     },
-    []
+    [],
   );
 
   const handleImageModalClose = useCallback(() => {
@@ -472,7 +472,7 @@ function PureMultimodalInput({
         const uploadPromises = validFiles.map((file) => uploadFile(file));
         const uploadedAttachments = await Promise.all(uploadPromises);
         const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
+          (attachment) => attachment !== undefined,
         );
 
         setAttachments((currentAttachments) => [
@@ -707,11 +707,11 @@ function PureChatInputBottomControls({
           onModelChangeAction={onModelChange}
           selectedModelId={selectedModelId}
         />
-        <ResponsiveTools
+        {/*<ResponsiveTools
           selectedModelId={selectedModelId}
           setTools={setSelectedTool}
           tools={selectedTool}
-        />
+        />*/}
       </PromptInputTools>
       <PromptInputSubmit
         className={"@[400px]:size-10 size-8 shrink-0"}
@@ -773,7 +773,7 @@ const ChatInputBottomControls = memo(
       return false;
     }
     return true;
-  }
+  },
 );
 
 export const MultimodalInput = memo(
@@ -794,5 +794,5 @@ export const MultimodalInput = memo(
     }
 
     return true;
-  }
+  },
 );
