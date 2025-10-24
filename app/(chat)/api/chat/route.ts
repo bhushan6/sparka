@@ -62,6 +62,8 @@ import { filterReasoningParts } from "./filterReasoningParts";
 import { getCreditReservation } from "./getCreditReservation";
 import { getRecentGeneratedImage } from "./getRecentGeneratedImage";
 import { getThreadUpToMessageId } from "./getThreadUpToMessageId";
+import composio from "@/app/(apps)/lib/composio";
+import { selectToolsForPrompt } from "@/lib/ai/tools/tool-selector";
 
 // Create shared Redis clients for resumable stream and cleanup
 let redisPublisher: any = null;
@@ -94,7 +96,7 @@ export function getStreamContext() {
     } catch (error: any) {
       if (error.message.includes("REDIS_URL")) {
         console.log(
-          " > Resumable streams are disabled due to missing REDIS_URL"
+          " > Resumable streams are disabled due to missing REDIS_URL",
         );
       } else {
         console.error(error);
@@ -151,7 +153,7 @@ async function streamFollowupSuggestions({
       data: {
         suggestions:
           chunk.suggestions?.filter(
-            (suggestion): suggestion is string => suggestion !== undefined
+            (suggestion): suggestion is string => suggestion !== undefined,
           ) ?? [],
       },
     });
@@ -206,7 +208,7 @@ export async function POST(request: NextRequest) {
       const clientIP = getClientIP(request);
       const rateLimitResult = await checkAnonymousRateLimit(
         clientIP,
-        redisPublisher
+        redisPublisher,
       );
 
       if (!rateLimitResult.success) {
@@ -222,7 +224,7 @@ export async function POST(request: NextRequest) {
               "Content-Type": "application/json",
               ...(rateLimitResult.headers || {}),
             },
-          }
+          },
         );
       }
 
@@ -248,7 +250,7 @@ export async function POST(request: NextRequest) {
               "Content-Type": "application/json",
               ...(rateLimitResult.headers || {}),
             },
-          }
+          },
         );
       }
 
@@ -266,7 +268,7 @@ export async function POST(request: NextRequest) {
               "Content-Type": "application/json",
               ...(rateLimitResult.headers || {}),
             },
-          }
+          },
         );
       }
     }
@@ -355,7 +357,7 @@ export async function POST(request: NextRequest) {
       if (creditError) {
         console.log(
           "RESPONSE > POST /api/chat: Credit reservation error:",
-          creditError
+          creditError,
         );
         return new Response(creditError, {
           status: 402,
@@ -375,7 +377,7 @@ export async function POST(request: NextRequest) {
         ? ANONYMOUS_LIMITS.CREDITS
         : reservation
           ? reservation.budget - baseModelCost
-          : 0
+          : 0,
     );
 
     // Disable all tools for models with unspecified features
@@ -386,7 +388,7 @@ export async function POST(request: NextRequest) {
         activeTools.some((tool: ToolName) => tool === "deepResearch")
       ) {
         activeTools = activeTools.filter(
-          (tool: ToolName) => tool !== "deepResearch"
+          (tool: ToolName) => tool !== "deepResearch",
         );
       }
     } else {
@@ -397,38 +399,38 @@ export async function POST(request: NextRequest) {
       explicitlyRequestedTools &&
       explicitlyRequestedTools.length > 0 &&
       !activeTools.some((tool: ToolName) =>
-        explicitlyRequestedTools.includes(tool)
+        explicitlyRequestedTools.includes(tool),
       )
     ) {
       log.warn(
         { explicitlyRequestedTools },
-        "Insufficient budget for requested tool"
+        "Insufficient budget for requested tool",
       );
       return new Response(
         `Insufficient budget for requested tool: ${explicitlyRequestedTools}.`,
         {
           status: 402,
-        }
+        },
       );
     }
     if (explicitlyRequestedTools && explicitlyRequestedTools.length > 0) {
       log.debug(
         { explicitlyRequestedTools },
-        "Setting explicitly requested tools"
+        "Setting explicitly requested tools",
       );
       activeTools = explicitlyRequestedTools;
     }
 
     // Validate input token limit (50k tokens for user message)
     const totalTokens = calculateMessagesTokens(
-      convertToModelMessages([userMessage])
+      convertToModelMessages([userMessage]),
     );
 
     if (totalTokens > MAX_INPUT_TOKENS) {
       log.warn({ totalTokens, MAX_INPUT_TOKENS }, "Token limit exceeded");
       const error = new ChatSDKError(
         "input_too_long:chat",
-        `Message too long: ${totalTokens} tokens (max: ${MAX_INPUT_TOKENS})`
+        `Message too long: ${totalTokens} tokens (max: ${MAX_INPUT_TOKENS})`,
       );
       return error.toResponse();
     }
@@ -437,7 +439,7 @@ export async function POST(request: NextRequest) {
       ? anonymousPreviousMessages
       : await getThreadUpToMessageId(
           chatId,
-          userMessage.metadata.parentMessageId
+          userMessage.metadata.parentMessageId,
         );
 
     const messages = [...messageThreadToParent, userMessage].slice(-5);
@@ -447,7 +449,7 @@ export async function POST(request: NextRequest) {
     addExplicitToolRequestToMessages(
       messages,
       activeTools,
-      explicitlyRequestedTools
+      explicitlyRequestedTools,
     );
 
     // Filter out reasoning parts to ensure compatibility between different models
@@ -484,7 +486,7 @@ export async function POST(request: NextRequest) {
         await redisPublisher.setEx(
           keyPrefix,
           600, // 10 minutes TTL
-          JSON.stringify({ chatId, streamId, createdAt: Date.now() })
+          JSON.stringify({ chatId, streamId, createdAt: Date.now() }),
         );
       }
 
@@ -508,6 +510,42 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      const connectedAccounts = await composio.connectedAccounts.list({
+        userIds: [userId!],
+      });
+      const connectedToolkitSlugs: string[] = [];
+      connectedAccounts.items.forEach((account) => {
+        connectedToolkitSlugs.push(account.toolkit.slug.toUpperCase());
+      });
+
+      const allComposioTools = await composio.tools.get(userId!, {
+        toolkits: connectedToolkitSlugs,
+        limit: 999999999, // Fetch all tools
+      });
+
+      const availableComposioToolDescriptions: Record<string, string> = {};
+      for (const [key, value] of Object.entries(allComposioTools)) {
+        availableComposioToolDescriptions[key] =
+          value.description || "No description available";
+      }
+
+      const selectedComposioToolSlugs = await selectToolsForPrompt(
+        userMessage.parts
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join(" "),
+        availableComposioToolDescriptions,
+      );
+
+      const filteredComposioTools: Record<string, any> = {};
+      for (const slug of selectedComposioToolSlugs) {
+        if (allComposioTools[slug]) {
+          filteredComposioTools[slug] = allComposioTools[slug];
+        }
+      }
+
+      console.log("Filtered Composio Tools:", filteredComposioTools);
+
       // Build the data stream that will emit tokens
       const stream = createUIMessageStream<ChatMessage>({
         execute: async ({ writer: dataStream }) => {
@@ -516,7 +554,7 @@ export async function POST(request: NextRequest) {
             system: systemPrompt(),
             messages: contextForLLM,
             stopWhen: [
-              stepCountIs(5),
+              stepCountIs(20),
               ({ steps }) => {
                 return steps.some((step) => {
                   const toolResults = step.content;
@@ -525,34 +563,37 @@ export async function POST(request: NextRequest) {
                     (toolResult) =>
                       toolResult.type === "tool-result" &&
                       toolResult.toolName === "deepResearch" &&
-                      (toolResult.output as any).format === "report"
+                      (toolResult.output as any).format === "report",
                   );
                 });
               },
             ],
 
-            activeTools,
+            // activeTools,
             experimental_transform: markdownJoinerTransform(),
             experimental_telemetry: {
               isEnabled: true,
               functionId: "chat-response",
             },
-            tools: getTools({
-              dataStream,
-              session: {
-                user: {
-                  id: userId || undefined,
-                },
-                expires: "noop",
-              },
-              contextForLLM,
-              messageId,
-              selectedModel: modelDefinition.apiModelId,
-              attachments: userMessage.parts.filter(
-                (part) => part.type === "file"
-              ),
-              lastGeneratedImage,
-            }),
+            tools: {
+              // ...getTools({
+              //   dataStream,
+              //   session: {
+              //     user: {
+              //       id: userId || undefined,
+              //     },
+              //     expires: "noop",
+              //   },
+              //   contextForLLM,
+              //   messageId,
+              //   selectedModel: modelDefinition.apiModelId,
+              //   attachments: userMessage.parts.filter(
+              //     (part) => part.type === "file",
+              //   ),
+              //   lastGeneratedImage,
+              // }),
+              ...filteredComposioTools,
+            },
             onError: (error) => {
               log.error({ error }, "streamText error");
             },
@@ -591,7 +632,7 @@ export async function POST(request: NextRequest) {
                   };
                 }
               },
-            })
+            }),
           );
           await result.consumeStream();
 
@@ -706,7 +747,7 @@ export async function POST(request: NextRequest) {
             if (keys.length > 0) {
               // Set 5 minute expiration on all stream-related keys
               await Promise.all(
-                keys.map((key: string) => redisPublisher.expire(key, 300))
+                keys.map((key: string) => redisPublisher.expire(key, 300)),
               );
             }
           } catch (error) {
@@ -734,7 +775,7 @@ export async function POST(request: NextRequest) {
         log.debug("Returning resumable stream");
         return new Response(
           await streamContext.resumableStream(streamId, () =>
-            stream.pipeThrough(new JsonToSseTransformStream())
+            stream.pipeThrough(new JsonToSseTransformStream()),
           ),
           {
             headers: {
@@ -742,7 +783,7 @@ export async function POST(request: NextRequest) {
               "Cache-Control": "no-cache",
               Connection: "keep-alive",
             },
-          }
+          },
         );
       }
       return new Response(stream.pipeThrough(new JsonToSseTransformStream()), {

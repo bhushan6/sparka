@@ -20,7 +20,7 @@ export const auth = betterAuth({
     provider: "pg",
     schema,
   }),
-  trustedOrigins: env.VERCEL_URL ? [env.VERCEL_URL] : undefined,
+  // trustedOrigins: env.VERCEL_URL ? [env.VERCEL_URL] : undefined,
   secret: env.AUTH_SECRET,
 
   socialProviders: (() => {

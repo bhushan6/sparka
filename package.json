@@ -28,6 +28,7 @@
     "test:types": "next typegen . && tsc --noEmit"
   },
   "dependencies": {
+    "@ai-models/vercel-gateway": "workspace:*",
     "@ai-sdk-tools/devtools": "^0.8.4",
     "@ai-sdk/anthropic": "^2.0.3",
     "@ai-sdk/gateway": "1.0.23",
@@ -42,6 +43,8 @@
     "@codemirror/state": "^6.5.0",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.35.3",
+    "@composio/core": "^0.1.55",
+    "@composio/vercel": "^0.2.11",
     "@e2b/code-interpreter": "^1.0.4",
     "@hookform/resolvers": "^5.2.1",
     "@lexical/code": "^0.32.1",
@@ -141,6 +144,7 @@
     "nanoid": "^5.0.8",
     "next": "15.5.1-canary.28",
     "next-themes": "^0.4.6",
+    "nuqs": "^2.7.2",
     "openai": "^5.8.2",
     "orderedmap": "^2.1.1",
     "p-retry": "^7.1.0",
@@ -178,8 +182,7 @@
     "vaul": "^1.1.2",
     "vercel": "^42.1.1",
     "zod": "^4.1.4",
-    "zustand": "^5.0.6",
-    "@ai-models/vercel-gateway": "workspace:*"
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.6",

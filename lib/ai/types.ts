@@ -35,8 +35,6 @@ export const toolNameSchema = z.enum([
   "deepResearch",
 ]);
 
-const _ = toolNameSchema.options satisfies ToolName[];
-
 type ToolNameInternal = z.infer<typeof toolNameSchema>;
 
 export const frontendToolsSchema = z.enum([
